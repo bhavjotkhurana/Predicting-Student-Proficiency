@@ -1,0 +1,1027 @@
+---
+title: "Modeling"
+output: pdf_document
+date: "2024-04-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Load Libraries
+```{r}
+library(readr)
+library(tibble)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(dmm)
+library(rpart)
+library(carat)
+```
+
+#Load Datasets
+
+```{r}
+Ethnicity_All_ELA <- read.csv("~/Desktop/Thesis/Ethnicity_All_ELA.csv", stringsAsFactors = TRUE)
+Ethnicity_All_Math <- read.csv("~/Desktop/Thesis/Ethnicity_All_Math.csv", stringsAsFactors = TRUE)
+Gender_ELA <- read.csv("~/Desktop/Thesis/Gender_ELA.csv", stringsAsFactors = TRUE)
+Gender_Math <- read.csv("~/Desktop/Thesis/Gender_Math.csv", stringsAsFactors = TRUE)
+```
+
+#Stratified Sampling (Split Train-Test)
+```{r}
+create_train_test <- function(data, size = 0.8, train = TRUE) {
+    n_row = nrow(data)
+    total_row = size * n_row
+    train_sample <- 1: total_row
+    if (train == TRUE) {
+        return (data[train_sample, ])
+    } else {
+        return (data[-train_sample, ])
+    }
+}
+```
+
+```{r}
+Ethnicity_ELA_train <- create_train_test(Group_Ethnicity_ELA, 0.8, train = TRUE)
+Ethnicity_ELA_test <- create_train_test(Group_Ethnicity_ELA, 0.8, train = FALSE)
+```
+
+#White_ELA random forest
+
+```{r}
+White_ELA_train <- create_train_test(Group_White_ELA, 0.8, train = TRUE)
+White_ELA_test <- create_train_test(Group_White_ELA, 0.8, train = FALSE)
+```
+
+```{r} 
+forest_white_ELA <- rpart(proficiency ~ teacher_grad_fte + teacher_experience_avg + rate_participation, data = Group_White_ELA)
+rpart.plot(forest_white_ELA)
+predict_unseen <-predict(forest_white_ELA, White_ELA_test, type = "class")
+table_mat <- table(White_ELA_train$proficiency)
+table_test <- table(White_ELA_test$proficiency)
+table_test_model <- table(White_ELA_test$proficiency, predict_unseen)
+```
+```{r}
+table_mat
+```
+
+```{r}
+table_test
+```
+```{r}
+table_test_model
+```
+
+
+```{r}
+accuracy_tune <- function(fit, data_test) {
+    predict_unseen <- predict(fit, data_test, type = 'class')
+    table_mat <- table(data_test$proficiency, predict_unseen)
+    accuracy_Test <- sum(diag(table_mat)) / sum(table_mat)
+    accuracy_Test
+}
+```
+
+```{r}
+accuracy_tune(forest_white_ELA, White_ELA_test)
+```
+
+#Black/Afr-Am_ELA 
+```{r}
+Black_ELA_train <- create_train_test(Group_Black_AfrAm_ELA, 0.8, train = TRUE)
+Black_ELA_test <- create_train_test(Group_Black_AfrAm_ELA, 0.8, train = FALSE)
+```
+
+```{r} 
+forest_black_ELA <- rpart(proficiency ~ teacher_grad_fte + teacher_experience_avg + rate_participation, data = Black_ELA_train)
+rpart.plot(forest_black_ELA)
+predict_unseen <-predict(forest_black_ELA, Black_ELA_test, type = "class")
+table_mat <- table(Black_ELA_test$proficiency, predict_unseen)
+```
+
+```{r}
+table_mat
+```
+
+```{r}
+accuracy_tune(forest_black_ELA, Black_ELA_test)
+```
+
+#Asian_ELA Forest
+```{r}
+Asian_ELA_train <- create_train_test(Group_Asian_ELA, 0.8, train = TRUE)
+Asian_ELA_test <- create_train_test(Group_Asian_ELA, 0.8, train = FALSE)
+```
+
+```{r} 
+forest_asian_ELA <- rpart(proficiency ~ teacher_grad_fte + teacher_experience_avg + rate_participation, data = Asian_ELA_train)
+rpart.plot(forest_asian_ELA)
+predict_unseen <-predict(forest_asian_ELA, Asian_ELA_test, type = "class")
+table_mat <- table(Asian_ELA_test$proficiency, predict_unseen)
+```
+
+```{r}
+table_mat
+```
+
+```{r}
+accuracy_tune(forest_asian_ELA, Asian_ELA_test)
+```
+
+
+```{r}
+accuracy_tune <- function(fit, data_test) {
+    predict_unseen <- predict(fit, data_test, type = 'class')
+    table_mat <- table(data_test$proficiency, predict_unseen)
+    accuracy_Test <- sum(diag(table_mat)) / sum(table_mat)
+    accuracy_Test
+}
+```
+
+```{r}
+accuracy_tune(forest_white_ELA, White_ELA_test)
+```
+
+```{r}
+eth_table <- table(Ethnicity_All_ELA$group)
+gen_table <- table(Gender_ELA$group)
+```
+
+
+```{r}
+Ethnicity_All_Math <- read.csv("~/Desktop/Thesis/Ethnicity_All_Math.csv", stringsAsFactors = TRUE)
+Gender_Math <- read.csv("~/Desktop/Thesis/Gender_Math.csv", stringsAsFactors = TRUE)
+```
+
+```{r}
+#
+create_train_test <- function(data, size = 0.8) {
+    n_row = nrow(data)
+    total_row = size * n_row
+    train_sample <- sample(1:n_row, total_row, replace = FALSE) 
+    list.dat <- list(data[train_sample, ],(data[-train_sample, ]))
+    return(list.dat)
+}
+```
+
+
+```{r}
+#calculate accuracy for decision trees 
+
+calculate_accuracy <- function(tbl) {
+  diag_sum <- sum(diag(tbl))
+  total_sum <- sum(tbl)
+  accuracy <- diag_sum / total_sum
+  return(signif(accuracy, digits = 2))
+}
+```
+
+```{r}
+#Train Test set creation using stratified sampling
+
+create_train_test_strat <- function(data, size = 0.8, train = TRUE){
+  
+  trainind <- sample(1:nrow(data), 
+                     nrow(data)*size, 
+                     replace = FALSE, 
+                     prob = rep(1/nrow(data), nrow(data)))
+  
+  list(data[trainind,], data[-trainind,])
+  
+}
+
+```
+
+
+```{r}
+#summary function for further tuning and summary abilities
+MySummary <- function(data, lev = NULL, model = NULL){
+  
+  a1 <- defaultSummary(data, lev, model)
+  b1 <- multiClassSummary(data, lev, model)
+  
+  out <- c(a1, b1)
+  out
+  
+  }
+```
+
+#Modeling Group "Asian"
+
+```{r}
+set.seed(1)
+#create train and test sets (stratified sampling)
+Asian_Math <- Ethnicity_All_Math %>% 
+  filter(group == "Asian")
+Asian_Math_train <- create_train_test_strat(Asian_Math)[[1]]
+Asian_Math_test <- create_train_test_strat(Asian_Math)[[2]]
+```
+
+```{r}
+set.seed(1)
+tree_asian_Math <- rpart(proficiency ~ teacher_grad_fte + teacher_experience_avg + rate_participation, data = Asian_Math_train, cp = 0.02180233)
+rpart.plot(tree_asian_Math)
+predict_unseen <-predict(tree_asian_Math, Asian_Math_test, type = "class")
+table_mat <- table(Asian_Math_test$proficiency, predict_unseen)
+accuracy_asian_math_tree <- calculate_accuracy(table_mat)
+```
+
+```{r}
+set.seed(1)
+Asian_Math_train_fixed <- na.roughfix(Asian_Math_train) #roughfix for training set
+Asian_Math_train_fixed$proficiency <- factor(Asian_Math_train_fixed$proficiency)
+#create untuned randomForest model
+bag_asian_Math <- randomForest(proficiency ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, data = Asian_Math_train_fixed, importance = TRUE)
+```
+
+```{r}
+#plot Out Of Bag error rate with number of trees 
+err.dat.asian <- bag_asian_Math[["err.rate"]]
+err.dat.asian <- as.data.frame(err.dat.asian)
+ggplot(err.dat.asian, aes(x = 1:500, y = OOB)) + geom_line()
+```
+
+```{r}
+err.dat.asian$tree <- 1:500
+err.dat.asian.long <- gather(err.dat.asian, key = "type", value = "error", 1:10)
+ggplot(err.dat.asian.long, aes(x = tree, y = error)) + geom_line() + facet_wrap(~type)
+```
+
+```{r}
+importance_asian <- bag_asian_Math[["importance"]]
+importance_asian <-  as.data.frame(importance_asian)
+```
+
+```{r}
+#Create plot to understand variable importance (Mean Decrease Gini)
+ib_mdg_asian <- data.frame(var = row.names(importance_asian), mdg = importance_asian$MeanDecreaseGini) 
+ggplot(data = ib_mdg_asian, aes(x = mdg, y = reorder(var, mdg))) + geom_col() 
+```
+
+```{r}
+#Create plot to understand variable importance (Mean Decrease Accuracy)
+ib_mda_asian <- data.frame(var = row.names(importance_asian), mda = importance_asian$MeanDecreaseAccuracy) 
+ggplot(data = ib_mda_asian, aes(x = mda, y = reorder(var, mda))) + geom_col() 
+```
+
+```{r}
+#Make character variable for proficiency
+Asian_Math_train_fixed_1 <- Asian_Math_train_fixed %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Asian_Math_train_fixed_1 <- within(Asian_Math_train_fixed_1, {   
+  proficiency_chr[proficiency_num < 40] <- "lev0to3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 80] <- "lev7"
+  proficiency_chr[proficiency_num >= 80 & proficiency_num < 90] <- "lev8"
+  proficiency_chr[proficiency_num >= 90 & proficiency_num < 101] <- "lev9"
+  })
+```
+
+```{r}
+#Build matching test set
+Asian_Math_test_clean<-  Asian_Math_test
+Asian_Math_test_clean <- Asian_Math_test_clean %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Asian_Math_test_clean <- within(Asian_Math_test_clean, {   
+  proficiency_chr[proficiency_num < 40] <- "lev0to3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 80] <- "lev7"
+  proficiency_chr[proficiency_num >= 80 & proficiency_num < 90] <- "lev8"
+  proficiency_chr[proficiency_num >= 90 & proficiency_num < 101] <- "lev9"
+  })
+
+
+Asian_Math_test_clean <- Asian_Math_test_clean %>% 
+  filter(!is.na(teacher_grad_fte), !is.na(teacher_experience_avg), !is.na(total_teacher_fte), !is.na(poverty_rating),
+         !is.na(proficiency_chr), !is.na(rate_participation))
+```
+
+```{r}
+#extract ntree with minimum OOB error rate 
+min_row <- err.dat.asian[which.min(err.dat.asian$OOB), ]
+nTree <- min_row$tree
+```
+
+
+```{r, cache=TRUE}
+#using train function from 'caret' to find best tuning for final model
+asian_rf_train <- train(proficiency_chr ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg +
+                          rate_participation + poverty_rating, data = Asian_Math_train_fixed_1, method = "rf",
+                        trControl = trainControl(method = "cv", number = 9, classProbs = TRUE, 
+                        summaryFunction = MySummary, sampling = "smote"), ntree = nTree, 
+                        tuneGrid = data.frame(mtry = c(1:5)), metric = "Accuracy")
+```
+
+```{r}
+#final best model from 'train'
+best_tune <- asian_rf_train$bestTune
+
+asian_rf <- randomForest(as.factor(proficiency_chr) ~ teacher_grad_fte + 
+                            total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, 
+                         data = Asian_Math_train_fixed_1, ntree = nTree, mtry = best_tune$mtry)
+```
+
+```{r}
+predictions <- predict(asian_rf, Asian_Math_test_clean)
+cm_asian_math <- confusionMatrix(predictions, as.factor(Asian_Math_test_clean$proficiency_chr))
+xtable(cm_asian_math$table)
+cm_asian_math
+```
+
+```{r}
+varImpPlot(asian_rf)
+```
+
+#Modeling Group "White"
+
+```{r}
+set.seed(1)
+White_Math <- Ethnicity_All_Math %>% 
+  filter(group == "White")
+White_Math_train <- create_train_test_strat(White_Math, 0.8)[[1]]
+White_Math_test <- create_train_test_strat(White_Math, 0.8)[[2]]
+```
+
+```{r}
+set.seed(1)
+tree_white_Math <- rpart(proficiency ~ teacher_grad_fte + teacher_experience_avg + rate_participation, 
+                        data = White_Math_train, cp = 0.009589041)
+rpart.plot(tree_white_Math)
+predict_unseen <- predict(tree_white_Math, White_Math_test, type = "class")
+table_mat <- table(White_Math_test$proficiency, predict_unseen)
+accuracy_white_math_tree <- calculate_accuracy(table_mat)
+```
+
+```{r}
+White_Math_train_fixed <- na.roughfix(White_Math_train)
+White_Math_train_fixed$proficiency <- factor(White_Math_train_fixed$proficiency)
+bag_white_Math <- randomForest(proficiency ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, data = White_Math_train_fixed, importance = TRUE)
+```
+
+```{r}
+err.dat.white <- bag_white_Math[["err.rate"]]
+err.dat.white <- as.data.frame(err.dat.white)
+ggplot(err.dat.white, aes(x = 1:500, y = OOB)) + geom_line()
+```
+
+```{r}
+err.dat.white$tree <- 1:500
+err.dat.white.long <- gather(err.dat.white, key = "type", value = "error", 1:11)
+ggplot(err.dat.white.long, aes(x = tree, y = error)) + geom_line() + facet_wrap(~type)
+```
+
+```{r}
+importance_white <- bag_white_Math[["importance"]]
+importance_white <-  as.data.frame(importance_white)
+```
+
+```{r}
+ib_mdg_white <- data.frame(var = row.names(importance_white), mdg = importance_white$MeanDecreaseGini) 
+ggplot(data = ib_mdg_white, aes(x = mdg, y = reorder(var, mdg))) + geom_col() 
+```
+
+```{r}
+ib_mda_white <- data.frame(var = row.names(importance_white), mda = importance_white$MeanDecreaseAccuracy) 
+ggplot(data = ib_mda_white, aes(x = mda, y = reorder(var, mda))) + geom_col() 
+```
+
+```{r}
+White_Math_train_fixed_1 <- White_Math_train_fixed %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+White_Math_train_fixed_1 <- within(White_Math_train_fixed_1, {   
+  proficiency_chr[ proficiency_num < 20] <- "lev0to1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 40] <- "lev3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 80] <- "lev7"
+  proficiency_chr[proficiency_num >= 80 & proficiency_num < 101] <- "lev8to9"
+  })
+```
+
+```{r}
+White_Math_test_clean <-  White_Math_test
+White_Math_test_clean <- White_Math_test_clean %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+White_Math_test_clean <- within(White_Math_test_clean, {   
+  proficiency_chr[ proficiency_num < 20] <- "lev0to1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 40] <- "lev3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 80] <- "lev7"
+  proficiency_chr[proficiency_num >= 80 & proficiency_num < 101] <- "lev8to9"
+  })
+White_Math_test_clean <-  White_Math_test_clean %>% 
+  filter(!is.na(teacher_grad_fte), !is.na(teacher_experience_avg), !is.na(total_teacher_fte), !is.na(poverty_rating),
+         !is.na(proficiency_chr), !is.na(rate_participation))
+
+min_row <- err.dat.white[which.min(err.dat.white$OOB), ]
+nTree <- min_row$tree
+```
+
+```{r, cache=TRUE}
+white_rf_train <- train(proficiency_chr ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg +
+                          rate_participation + poverty_rating, data = White_Math_train_fixed_1, method = "rf",
+                        trControl = trainControl(method = "cv", number = 10, classProbs = TRUE, 
+                        summaryFunction = MySummary, sampling = "smote"), ntree = nTree, 
+                        tuneGrid = data.frame(mtry = c(1:5)), 
+                        metric = "Accuracy")
+```
+
+```{r}
+best_tune <- white_rf_train$bestTune
+
+white_rf <- randomForest(as.factor(proficiency_chr) ~ teacher_grad_fte + 
+                            total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, 
+                         data = White_Math_train_fixed_1, ntree = nTree, mtry = best_tune$mtry)
+```
+
+```{r}
+predictions <- predict(white_rf, White_Math_test_clean)
+cm_white_math <- confusionMatrix(predictions, as.factor(White_Math_test_clean$proficiency_chr))
+xtable(cm_white_math$table)
+cm_white_math
+```
+
+```{r}
+varImpPlot(white_rf)
+```
+
+#Modeling "Gender" dataset
+
+```{r}
+set.seed(1)
+Gender_Math_train <- create_train_test_strat(Gender_Math, 0.8)[[1]]
+Gender_Math_test <- create_train_test_strat(Gender_Math, 0.8)[[2]]
+```
+
+```{r}
+set.seed(1)
+tree_gender_Math <- rpart(proficiency ~ group + teacher_grad_fte + teacher_experience_avg + rate_participation, data = Gender_Math_train, cp = 0.005722461)
+rpart.plot(tree_gender_Math)
+predict_unseen <-predict(tree_gender_Math, Gender_Math_test, type = "class")
+table_mat <- table(Gender_Math_test$proficiency, predict_unseen)
+accuracy_gender_math_tree <- calculate_accuracy(table_mat)
+```
+
+```{r}
+Gender_Math_train_fixed <- na.roughfix(Gender_Math_train)
+Gender_Math_train_fixed$proficiency <- factor(Gender_Math_train_fixed$proficiency)
+bag_gender_Math <- randomForest(proficiency ~ group + teacher_grad_fte + total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, data = Gender_Math_train_fixed, importance = TRUE)
+```
+
+```{r}
+err.dat.gender <- bag_gender_Math[["err.rate"]]
+err.dat.gender <- as.data.frame(err.dat.gender)
+ggplot(err.dat.gender, aes(x = 1:500, y = OOB)) + geom_line()
+```
+
+```{r}
+err.dat.gender$tree <- 1:500
+err.dat.gender.long <- gather(err.dat.gender, key = "type", value = "error", 1:11)
+ggplot(err.dat.gender.long, aes(x = tree, y = error)) + geom_line() + facet_wrap(~type)
+```
+
+```{r}
+importance_gender <- bag_gender_Math[["importance"]]
+importance_gender <-  as.data.frame(importance_gender)
+```
+
+```{r}
+ib_mdg_gender <- data.frame(var = row.names(importance_gender), mdg = importance_gender$MeanDecreaseGini) 
+ggplot(data = ib_mdg_gender, aes(x = mdg, y = reorder(var, mdg))) + geom_col() 
+```
+
+```{r}
+ib_mda_gender <- data.frame(var = row.names(importance_gender), mda = importance_gender$MeanDecreaseAccuracy) 
+ggplot(data = ib_mda_gender, aes(x = mda, y = reorder(var, mda))) + geom_col() 
+```
+
+```{r}
+Gender_Math_train_fixed_1 <- Gender_Math_train_fixed %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Gender_Math_train_fixed_1 <- within(Gender_Math_train_fixed_1, {   
+  proficiency_chr[proficiency_num < 10] <- "lev0"
+  proficiency_chr[proficiency_num >= 10 & proficiency_num < 20] <- "lev1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 40] <- "lev3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 80] <- "lev7"
+  proficiency_chr[proficiency_num >= 80 & proficiency_num < 90] <- "lev8"
+  proficiency_chr[proficiency_num >= 90 & proficiency_num < 101] <- "lev9"
+  })
+```
+
+```{r}
+Gender_Math_test_clean <-  Gender_Math_test
+Gender_Math_test_clean <- Gender_Math_test_clean %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Gender_Math_test_clean <- within(Gender_Math_test_clean, {   
+  proficiency_chr[proficiency_num < 10] <- "lev0"
+  proficiency_chr[proficiency_num >= 10 & proficiency_num < 20] <- "lev1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 40] <- "lev3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 80] <- "lev7"
+  proficiency_chr[proficiency_num >= 80 & proficiency_num < 90] <- "lev8"
+  proficiency_chr[proficiency_num >= 90 & proficiency_num < 101] <- "lev9"
+  })
+
+Gender_Math_test_clean <-  Gender_Math_test_clean %>% 
+  filter(!is.na(teacher_grad_fte), !is.na(teacher_experience_avg), !is.na(total_teacher_fte), !is.na(poverty_rating),
+         !is.na(proficiency_chr), !is.na(rate_participation))
+
+min_row <- err.dat.gender[which.min(err.dat.gender$OOB), ]
+nTree <- min_row$tree
+```
+
+```{r, cache=TRUE}
+gender_rf_train <- train(proficiency_chr ~ group + teacher_grad_fte + total_teacher_fte + teacher_experience_avg +
+                          rate_participation + relevel(poverty_rating, ref = "Middle Poverty"), 
+                         data = Gender_Math_train_fixed_1, method = "rf",
+                        trControl = trainControl(method = "cv", number = 9, classProbs = TRUE, 
+                        summaryFunction = MySummary, sampling = "smote"), ntree = nTree, 
+                        tuneGrid = data.frame(mtry = c(1:5)), metric = "Accuracy")
+```
+
+```{r}
+best_tune <- gender_rf_train$bestTune
+
+gender_rf <- randomForest(as.factor(proficiency_chr) ~ group + teacher_grad_fte + 
+                            total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, 
+                         data = Gender_Math_train_fixed_1, ntree = nTree, mtry = best_tune$mtry)
+```
+
+```{r}
+predictions <- predict(gender_rf, Gender_Math_test_clean)
+cm_gender_math <- confusionMatrix(predictions, as.factor(Gender_Math_test_clean$proficiency_chr))
+xtable(cm_gender_math$table)
+cm_gender_math
+```
+
+```{r}
+varImpPlot(gender_rf)
+```
+
+#Modeling Group "Black"
+
+```{r}
+set.seed(1)
+Black_Math <- Ethnicity_All_Math %>% 
+  filter(group == "Black/African American")
+Black_Math_train <- create_train_test_strat(Black_Math, 0.8)[[1]]
+Black_Math_test <- create_train_test_strat(Black_Math, 0.8)[[2]]
+```
+
+```{r}
+set.seed(1)
+tree_black_Math <- rpart(proficiency ~ teacher_grad_fte + teacher_experience_avg + rate_participation, data = Black_Math_train, cp = 0.03529412)
+rpart.plot(tree_black_Math)
+predict_unseen <-predict(tree_black_Math, Black_Math_test, type = "class")
+table_mat <- table(Black_Math_test$proficiency, predict_unseen)
+accuracy_black_math_tree <- calculate_accuracy(table_mat)
+```
+
+```{r}
+Black_Math_train_fixed <- na.roughfix(Black_Math_train)
+Black_Math_train_fixed$proficiency <- factor(Black_Math_train_fixed$proficiency)
+bag_black_Math <- randomForest(proficiency ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, data = Black_Math_train_fixed, importance = TRUE)
+```
+
+```{r}
+err.dat.black<- bag_black_Math[["err.rate"]]
+err.dat.black <- as.data.frame(err.dat.black)
+ggplot(err.dat.black, aes(x = 1:500, y = OOB)) + geom_line()
+```
+
+```{r}
+err.dat.black$tree <- 1:500
+err.dat.black.long <- gather(err.dat.black, key = "type", value = "error", 1:9)
+ggplot(err.dat.black.long, aes(x = tree, y = error)) + geom_line() + facet_wrap(~type)
+```
+
+```{r}
+importance_black <- bag_black_Math[["importance"]]
+importance_black <-  as.data.frame(importance_black)
+```
+
+```{r}
+ib_mdg_black <- data.frame(var = row.names(importance_black), mdg = importance_black$MeanDecreaseGini) 
+ggplot(data = ib_mdg_black, aes(x = mdg, y = reorder(var, mdg))) + geom_col() 
+```
+
+```{r}
+ib_mda_black <- data.frame(var = row.names(importance_black), mda = importance_black$MeanDecreaseAccuracy) 
+ggplot(data = ib_mda_black, aes(x = mda, y = reorder(var, mda))) + geom_col() 
+```
+
+```{r}
+Black_Math_train_fixed_1 <- Black_Math_train_fixed %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Black_Math_train_fixed_1 <- within(Black_Math_train_fixed_1, {   
+  proficiency_chr[proficiency_num < 10] <- "lev0"
+  proficiency_chr[proficiency_num >= 10 & proficiency_num < 20] <- "lev1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 101] <- "lev3to9"
+  })
+```
+
+```{r}
+Black_Math_test_clean <-  Black_Math_test 
+Black_Math_test_clean <- Black_Math_test_clean %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Black_Math_test_clean <- within(Black_Math_test_clean, {   
+  proficiency_chr[proficiency_num < 10] <- "lev0"
+  proficiency_chr[proficiency_num >= 10 & proficiency_num < 20] <- "lev1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 101] <- "lev3to9"
+  })
+
+Black_Math_test_clean <-  Black_Math_test_clean %>% 
+  filter(!is.na(teacher_grad_fte), !is.na(teacher_experience_avg), !is.na(total_teacher_fte), !is.na(poverty_rating),
+         !is.na(proficiency_chr), !is.na(rate_participation))
+
+min_row <- err.dat.black[which.min(err.dat.black$OOB), ]
+nTree <- min_row$tree
+```
+
+```{r, cache=TRUE}
+black_rf_train <- train(proficiency_chr ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg +
+                          rate_participation + relevel(poverty_rating, ref = "Middle Poverty"), 
+                          data = Black_Math_train_fixed_1, method = "rf",
+                        trControl = trainControl(method = "cv", number = 9, classProbs = TRUE, 
+                        summaryFunction = MySummary, sampling = "smote"), ntree = nTree, 
+                        tuneGrid = data.frame(mtry = c(1:5)), metric = "Accuracy")
+```
+
+```{r}
+best_tune <- black_rf_train$bestTune
+
+black_rf <- randomForest(as.factor(proficiency_chr) ~ teacher_grad_fte + 
+                            total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, 
+                         data = Black_Math_train_fixed_1, ntree = nTree, mtry = best_tune$mtry)
+```
+
+```{r}
+predictions <- predict(black_rf, Black_Math_test_clean)
+cm_black_math <- confusionMatrix(predictions, as.factor(Black_Math_test_clean$proficiency_chr))
+xtable(cm_black_math$table)
+cm_black_math
+```
+
+```{r}
+varImpPlot(black_rf)
+```
+
+#Modeling Group "Hispanic"
+
+```{r}
+set.seed(1)
+Hispanic_Math <- Ethnicity_All_Math %>% 
+  filter(group == "Hispanic/Latino")
+Hispanic_Math_train <- create_train_test_strat(Hispanic_Math, 0.8)[[1]]
+Hispanic_Math_test <- create_train_test_strat(Hispanic_Math, 0.8)[[2]]
+```
+
+```{r}
+set.seed(1)
+tree_hispanic_Math <- rpart(proficiency ~ teacher_grad_fte + teacher_experience_avg + rate_participation, data = Hispanic_Math_train, cp = 0.009398496)
+rpart.plot(tree_hispanic_Math)
+predict_unseen <-predict(tree_hispanic_Math, Hispanic_Math_test, type = "class")
+table_mat <- table(Hispanic_Math_test$proficiency, predict_unseen)
+accuracy_hispanic_math_tree <- calculate_accuracy(table_mat)
+```
+
+```{r}
+Hispanic_Math_train_fixed <- na.roughfix(Hispanic_Math_train)
+Hispanic_Math_train_fixed$proficiency <- factor(Hispanic_Math_train_fixed$proficiency)
+bag_hispanic_Math <- randomForest(proficiency ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, data = Hispanic_Math_train_fixed, importance = TRUE)
+```
+
+```{r}
+err.dat.hispanic<- bag_hispanic_Math[["err.rate"]]
+err.dat.hispanic <- as.data.frame(err.dat.hispanic)
+ggplot(err.dat.hispanic, aes(x = 1:500, y = OOB)) + geom_line()
+```
+
+```{r}
+err.dat.hispanic$tree <- 1:500
+err.dat.hispanic.long <- gather(err.dat.hispanic, key = "type", value = "error", 1:10)
+ggplot(err.dat.hispanic.long, aes(x = tree, y = error)) + geom_line() + facet_wrap(~type)
+```
+
+```{r}
+importance_hispanic <- bag_black_Math[["importance"]]
+importance_hispanic <-  as.data.frame(importance_hispanic)
+```
+
+```{r}
+ib_mdg_hispanic <- data.frame(var = row.names(importance_hispanic), mdg = importance_hispanic$MeanDecreaseGini) 
+ggplot(data = ib_mdg_hispanic, aes(x = mdg, y = reorder(var, mdg))) + geom_col() 
+```
+
+```{r}
+ib_mda_hispanic <- data.frame(var = row.names(importance_hispanic), mda = importance_hispanic$MeanDecreaseAccuracy) 
+ggplot(data = ib_mda_hispanic, aes(x = mda, y = reorder(var, mda))) + geom_col() 
+```
+
+```{r}
+Hispanic_Math_train_fixed_1 <- Hispanic_Math_train_fixed %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Hispanic_Math_train_fixed_1 <- within(Hispanic_Math_train_fixed_1, {
+  proficiency_chr[proficiency_num < 10] <- "lev0"
+  proficiency_chr[proficiency_num >= 10 & proficiency_num < 20] <- "lev1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 40] <- "lev3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 101] <- "lev7to9"
+  })
+```
+
+```{r}
+Hispanic_Math_test_clean <-  Hispanic_Math_test 
+Hispanic_Math_test_clean <- Hispanic_Math_test_clean %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Hispanic_Math_test_clean <- within(Hispanic_Math_test_clean, {   
+  proficiency_chr[proficiency_num < 10] <- "lev0"
+  proficiency_chr[proficiency_num >= 10 & proficiency_num < 20] <- "lev1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 40] <- "lev3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 101] <- "lev7to9"
+  })
+
+Hispanic_Math_test_clean <-  Hispanic_Math_test_clean %>% 
+  filter(!is.na(teacher_grad_fte), !is.na(teacher_experience_avg), !is.na(total_teacher_fte), !is.na(poverty_rating),
+         !is.na(proficiency_chr), !is.na(rate_participation))
+
+min_row <- err.dat.hispanic[which.min(err.dat.hispanic$OOB), ]
+nTree <- min_row$tree
+```
+
+```{r, cache=TRUE}
+hispanic_rf_train <- train(proficiency_chr ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg +
+                          rate_participation + poverty_rating, data = Hispanic_Math_train_fixed_1, method = "rf",
+                        trControl = trainControl(method = "cv", number = 9, classProbs = TRUE, 
+                        summaryFunction = MySummary, sampling = "smote"), ntree = nTree, 
+                        tuneGrid = data.frame(mtry = c(1:5)), metric = "Accuracy")
+```
+
+```{r}
+best_tune <- hispanic_rf_train$bestTune
+
+hispanic_rf <- randomForest(as.factor(proficiency_chr) ~ teacher_grad_fte + 
+                            total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, 
+                         data = Hispanic_Math_train_fixed_1, ntree = nTree, mtry = best_tune$mtry)
+```
+
+
+```{r}
+predictions <- predict(hispanic_rf, Hispanic_Math_test_clean)
+cm_hispanic_math <- confusionMatrix(predictions, as.factor(Hispanic_Math_test_clean$proficiency_chr))
+```
+
+```{r}
+varImpPlot(hispanic_rf)
+```
+
+#Modeling Group "Multi-Racial"
+
+```{r}
+set.seed(1)
+Multi_Math <- Ethnicity_All_Math %>% 
+  filter(group == "Multi-Racial")
+Multi_Math_train <- create_train_test_strat(Multi_Math, 0.8)[[1]]
+Multi_Math_test <- create_train_test_strat(Multi_Math, 0.8)[[2]]
+```
+
+```{r}
+set.seed(1)
+tree_multi_Math <- rpart(proficiency ~ teacher_grad_fte + teacher_experience_avg + rate_participation, data = Multi_Math_train, cp = 0.011494253)
+rpart.plot(tree_multi_Math)
+predict_unseen <-predict(tree_multi_Math, Multi_Math_test, type = "class")
+table_mat <- table(Multi_Math_test$proficiency, predict_unseen)
+accuracy_multi_math_tree <- calculate_accuracy(table_mat)
+```
+
+```{r}
+Multi_Math_train_fixed <- na.roughfix(Multi_Math_train)
+Multi_Math_train_fixed$proficiency <- factor(Multi_Math_train_fixed$proficiency)
+bag_multi_Math <- randomForest(proficiency ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, data = Multi_Math_train_fixed, importance = TRUE)
+```
+
+```{r}
+err.dat.multi<- bag_multi_Math[["err.rate"]]
+err.dat.multi <- as.data.frame(err.dat.multi)
+ggplot(err.dat.multi, aes(x = 1:500, y = OOB)) + geom_line()
+```
+
+```{r}
+err.dat.multi$tree <- 1:500
+err.dat.multi.long <- gather(err.dat.multi, key = "type", value = "error", 1:10)
+ggplot(err.dat.multi.long, aes(x = tree, y = error)) + geom_line() + facet_wrap(~type)
+```
+
+```{r}
+importance_multi <- bag_black_Math[["importance"]]
+importance_multi <-  as.data.frame(importance_multi)
+```
+
+```{r}
+ib_mdg_multi <- data.frame(var = row.names(importance_multi), mdg = importance_multi$MeanDecreaseGini) 
+ggplot(data = ib_mdg_multi, aes(x = mdg, y = reorder(var, mdg))) + geom_col() 
+```
+
+```{r}
+ib_mda_multi <- data.frame(var = row.names(importance_multi), mda = importance_multi$MeanDecreaseAccuracy) 
+ggplot(data = ib_mda_multi, aes(x = mda, y = reorder(var, mda))) + geom_col() 
+```
+
+```{r}
+Multi_Math_train_fixed_1 <- Multi_Math_train_fixed %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Multi_Math_train_fixed_1 <- within(Multi_Math_train_fixed_1, {
+  proficiency_chr[ proficiency_num < 20] <- "lev0to1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 40] <- "lev3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 80] <- "lev7"
+  proficiency_chr[proficiency_num >= 80 & proficiency_num < 101] <- "lev8to9"
+  })
+```
+
+```{r}
+Multi_Math_test_clean <-  Multi_Math_test
+Multi_Math_test_clean <- Multi_Math_test_clean %>% 
+  mutate(proficiency_chr = as.character(proficiency))
+Multi_Math_test_clean <- within(Multi_Math_test_clean, {   
+  proficiency_chr[ proficiency_num < 20] <- "lev0to1"
+  proficiency_chr[proficiency_num >= 20 & proficiency_num < 30] <- "lev2"
+  proficiency_chr[proficiency_num >= 30 & proficiency_num < 40] <- "lev3"
+  proficiency_chr[proficiency_num >= 40 & proficiency_num < 50] <- "lev4"
+  proficiency_chr[proficiency_num >= 50 & proficiency_num < 60] <- "lev5"
+  proficiency_chr[proficiency_num >= 60 & proficiency_num < 70] <- "lev6"
+  proficiency_chr[proficiency_num >= 70 & proficiency_num < 80] <- "lev7"
+  proficiency_chr[proficiency_num >= 80 & proficiency_num < 101] <- "lev8to9"
+  })
+
+min_row <- err.dat.multi[which.min(err.dat.multi$OOB), ]
+nTree <- min_row$tree
+
+Multi_Math_test_clean <-  Multi_Math_test_clean %>% 
+  filter(!is.na(teacher_grad_fte), !is.na(teacher_experience_avg), !is.na(total_teacher_fte), !is.na(poverty_rating),
+         !is.na(proficiency_chr), !is.na(rate_participation))
+```
+
+```{r, cache=TRUE}
+multi_rf_train <- train(proficiency_chr ~ teacher_grad_fte + total_teacher_fte + teacher_experience_avg +
+                          rate_participation + poverty_rating, data = Multi_Math_train_fixed_1, method = "rf",
+                        trControl = trainControl(method = "cv", number = 9, classProbs = TRUE, 
+                        summaryFunction = MySummary, sampling = "smote"), ntree = nTree, 
+                        tuneGrid = data.frame(mtry = c(1:5)), metric = "Accuracy")
+```
+
+```{r}
+best_tune <- multi_rf_train$bestTune
+
+multi_rf <- randomForest(as.factor(proficiency_chr) ~ teacher_grad_fte + 
+                            total_teacher_fte + teacher_experience_avg + rate_participation + poverty_rating, 
+                         data = Multi_Math_train_fixed_1, ntree = nTree, mtry = best_tune$mtry)
+```
+
+```{r}
+predictions <- predict(multi_rf, Multi_Math_test_clean)
+cm_multi_math <- confusionMatrix(predictions, as.factor(Multi_Math_test_clean$proficiency_chr))
+```
+
+```{r}
+varImpPlot(multi_rf)
+```
+
+```{r}
+VIP_asian_math <- varImp(asian_rf, scale = FALSE)
+VIP_asian_math <- data.frame(var = row.names(VIP_asian_math), MDG = VIP_asian_math$Overall, group = "Asian")
+ggplot(VIP_asian_math, aes(MDG, reorder(var, MDG))) + geom_col() + labs(x = "Mean Decrease Gini",y = "Independent Variable", title = "Variable Importance Plot (Asian, Math)") 
+
+```
+
+```{r}
+VIP_white_math <- varImp(white_rf, scale = FALSE)
+VIP_white_math <- data.frame(var = row.names(VIP_white_math), MDG = VIP_white_math$Overall, group = "White")
+ggplot(VIP_white_math, aes(MDG, reorder(var, MDG))) + geom_col() + labs(x = "Mean Decrease Gini",y = "Independent Variable", title = "Variable Importance Plot (White, Math)") 
+
+```
+
+```{r}
+VIP_black_math <- varImp(black_rf, scale = FALSE)
+VIP_black_math <- data.frame(var = row.names(VIP_black_math), MDG = VIP_black_math$Overall, group = "Black")
+ggplot(VIP_black_math, aes(MDG, reorder(var, MDG))) + geom_col() + labs(x = "Mean Decrease Gini",y = "Independent Variable", title = "Variable Importance Plot (Black, Math)") 
+
+```
+
+```{r}
+VIP_hispanic_math <- varImp(hispanic_rf, scale = FALSE)
+VIP_hispanic_math <- data.frame(var = row.names(VIP_hispanic_math), MDG = VIP_hispanic_math$Overall,group = "Hispanic")
+ggplot(VIP_black_math, aes(MDG, reorder(var, MDG))) + geom_col() + labs(x = "Mean Decrease Gini",y = "Independent Variable", title = "Variable Importance Plot (Hispanic, Math)") 
+
+```
+
+```{r}
+VIP_multi_math <- varImp(multi_rf, scale = FALSE)
+VIP_multi_math <- data.frame(var = row.names(VIP_multi_math), MDG = VIP_multi_math$Overall,  group = "Multi")
+ggplot(VIP_multi_math, aes(MDG, reorder(var, MDG))) + geom_col() + labs(x = "Mean Decrease Gini",y = "Independent Variable", title = "Variable Importance Plot (Multi-Racial, Math)") 
+```
+
+```{r}
+VIP_gender_math <- varImp(gender_rf, scale = FALSE)
+VIP_gender_math <- data.frame(var = row.names(VIP_gender_math), MDG = VIP_gender_math$Overall,  group = "Gender")
+ggplot(VIP_gender_math, aes(MDG, reorder(var, MDG))) + geom_col() + labs(x = "Mean Decrease Gini",y = "Independent Variable", title = "Variable Importance Plot (Gender, Math)") 
+```
+
+```{r}
+VIP_math <- rbind(VIP_asian_math, VIP_black_math, VIP_gender_math, VIP_hispanic_math, VIP_multi_math, VIP_white_math)
+```
+
+```{r}
+VIP_math %>% 
+  filter(group == "Gender") %>% 
+  ggplot(aes(x = MDG, y = reorder(var, MDG))) + geom_col(position = "dodge", color = "black") + labs(title = "Variable Importance for Gender Model (Math)", x = "Mean Decrease Gini", y = "Independent Predictor") 
+ggsave("~/Desktop/VIP_gender_math.jpg")
+```
+
+
+```{r}
+VIP_math %>% 
+  filter(group != "Gender") %>% 
+  ggplot(aes(x = MDG, y = var)) + geom_col(aes(fill = group), position = "dodge", color = "black") + scale_fill_brewer(palette = "Accent") + labs(title = "Variable Importance for Race Groups (Math)", x = "Mean Decrease Gini", y = "Independent Predictor", fill = "Race") 
+ggsave("~/Desktop/VIP_race_math.jpg")
+```
+
+```{r}
+cm_asian_math_df <- data.frame(cm_asian_math$byClass)
+cm_asian_math_df <- cm_asian_math_df %>% 
+  subset(select = c(Sensitivity, Specificity, Pos.Pred.Value, Neg.Pred.Value, F1, Balanced.Accuracy))
+
+cm_white_math_df <- data.frame(cm_white_math$byClass)
+cm_white_math_df <- cm_white_math_df %>% 
+  subset(select = c(Sensitivity, Specificity, Pos.Pred.Value, Neg.Pred.Value, F1, Balanced.Accuracy))
+
+cm_black_math_df <- data.frame(cm_black_math$byClass)
+cm_black_math_df <- cm_black_math_df %>% 
+  subset(select = c(Sensitivity, Specificity, Pos.Pred.Value, Neg.Pred.Value, F1, Balanced.Accuracy))
+
+cm_hispanic_math_df <- data.frame(cm_hispanic_math$byClass)
+cm_hispanic_math_df <- cm_hispanic_math_df %>% 
+  subset(select = c(Sensitivity, Specificity, Pos.Pred.Value, Neg.Pred.Value, F1, Balanced.Accuracy))
+
+cm_multi_math_df <- data.frame(cm_multi_math$byClass)
+cm_multi_math_df <- cm_multi_math_df %>% 
+  subset(select = c(Sensitivity, Specificity, Pos.Pred.Value, Neg.Pred.Value, F1, Balanced.Accuracy))
+
+cm_gender_math_df <- data.frame(cm_gender_math$byClass)
+cm_gender_math_df <- cm_gender_math_df %>% 
+  subset(select = c(Sensitivity, Specificity, Pos.Pred.Value, Neg.Pred.Value, F1, Balanced.Accuracy))
+```
+
+```{r}
+xtable(cm_asian_math_df)
+```
+
+```{r}
+xtable(cm_black_math_df)
+```
+
+```{r}
+xtable(cm_white_math_df)
+```
+
+```{r}
+xtable(cm_multi_math_df)
+```
+
+```{r}
+xtable(cm_hispanic_math_df)
+```
+
+```{r}
+xtable(VIP_math)
+```
