@@ -1,0 +1,556 @@
+---
+title: "Wrangling_EDA"
+output: pdf_document
+date: "2024-04-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Load Libraries
+```{r}
+library(readr)
+library(tibble)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(dmm)
+```
+
+#Load Datasets 2018-19
+
+```{r}
+ELA_Scores <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/pagr_schools_ela_all_1819/Schools_ELA_AllGrades_1819-Table 1.csv")
+
+Math_Scores <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/pagr_schools_math_all_1819/Schools_Math_AllGrades_1819-Table 1.csv")
+
+Four_Year_Cohort_Rates <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/cohortmediafile2018-2019/4-Year Cohort Rates-Table 1.csv")
+
+Four_Year_Cohort_Trends<- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/cohortmediafile2018-2019/4-Year Cohort Trends-Table 1.csv")
+
+Five_Year_Cohort_Rates <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/cohortmediafile2018-2019/5-Year Cohort Rates-Table 1.csv")
+
+Five_Year_Cohort_Trends <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/cohortmediafile2018-2019/5-Year Cohort Trends-Table 1.csv")
+
+ClassSize <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/class_size_report_20182019/Data-Table 1.csv")
+
+Mobility <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/StudentMobility_SchoolandDistrict_1819.csv")
+
+Attendance <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/regularattenders_report_1819/1819 Regular Attenders Data-Table 1.csv")
+
+TeacherQualification <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/TeacherQualificationReport20182019/Schools-Table 1.csv")
+
+Dropout <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/dropouttables2018-2019/District and School-Table 1.csv")
+
+StaffFTE <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/staff_fte_report_2018-2019/1819 Staff FTE School Level-Table 1.csv")
+
+Post_Secondary_Enrollment <- read_csv("~/Desktop/Thesis/Oregon Gov Datasets/2019 Set/Post-Secondary_Enrollment_2018-19_HS_Graduates/Post-Secondary Enrollment-Table 1.csv")
+```
+
+#Make Scores Dataset
+```{r}
+Scores <- rbind(ELA_Scores, Math_Scores)
+```
+
+##Drop Columns from everything else (run with dataset upload)
+```{r}
+Four_Year_Cohort_Rates <- Four_Year_Cohort_Rates[c(4, 6, 7, 15, 19)]
+
+Mobility <- Mobility[c(1,4,6)]
+
+Post_Secondary_Enrollment <- Post_Secondary_Enrollment[c(2,5,7)]
+
+StaffFTE <- StaffFTE[c(3,16,17)]
+
+TeacherQualification <- TeacherQualification[c(4, 6, 7, 8, 12)]
+
+Attendance <- Attendance[c(3, 6, 9)]
+
+Five_Year_Cohort_Rates <- Five_Year_Cohort_Rates[c(4, 7, 15)]
+
+Dropout <- Dropout[c(2, 5, 8, 12)]
+```
+
+##Rename Columns
+```{r}
+Scores <- rename(Scores, c(academic_year = "Academic Year", 
+                                  dist_id = "District ID",
+                                  dist = "District" ,  
+                                  school_id = "School ID",
+                                  school = "School",
+                                  subject = "Subject", 
+                                  group = "Student Group",
+                                  grade_lvl = "Grade Level", 
+                                  num_proficient = "Number Proficient", 
+                                  proficiency = "Percent Proficient (Level 3 or 4)",
+                                  num_level_4 = "Number Level 4",
+                                  perc_level_4 = "Percent Level 4", 
+                                  num_level_3 = "Number Level 3",
+                                  perc_level_3 = "Percent Level 3",
+                                  num_level_2 = "Number Level 2",
+                                  perc_level_2 = "Percent Level 2",
+                                  num_level_1 = "Number Level 1",
+                                  perc_level_1 = "Percent Level 1",
+                                  num_participants = "Number of Participants",
+                                  rate_participation = "Participation Rate"))
+```
+
+```{r}
+Mobility <- rename(Mobility, c(school_id = "InstID", 
+                               school_type = "Institution Type", 
+                               mobility_percent = "Percent of\nMobile Students"))
+```
+
+```{r}
+Post_Secondary_Enrollment <- rename(Post_Secondary_Enrollment, c(school_id = "InstID", 
+                                                                 group = "Student Group", 
+                                                                 college_going = "Percent of High School Graduates Enrolled in a Post-Secondary Institution within 16 Months of High School Graduation"))
+```
+
+```{r}
+StaffFTE <- rename(StaffFTE, c(school_id = "School Institution ID", 
+                               teacher_experience_avg = "Average Teacher Experience in Years", 
+                               teacher_grad_fte = "Percent of Teacher FTE with Graduate Degree"))
+```
+
+```{r}
+TeacherQualification <- rename(TeacherQualification, c(school_id = "School ID", 
+                                                       low_grade = "Low Grade", 
+                                                       high_grade = "High Grade", 
+                                                       total_teacher_FTE = "Total Teacher Instructional FTE", 
+                                                       poverty_rating = "High/Low \nPoverty School"))
+```
+
+```{r}
+Attendance <- rename(Attendance, c(school_id = "Institution ID", 
+                                   group = "Student Group", 
+                                   reg_attenders = "Percent Regular Attenders"))
+```
+
+```{r}
+Five_Year_Cohort_Rates <- rename(Five_Year_Cohort_Rates, c(school_id = "School \nID", 
+                                                           group = "Student \nGroup", 
+                                                           grad_rate_five_year = "2018-19 \nFive-year Cohort \nGraduation Rate"))
+```
+
+```{r}
+
+Four_Year_Cohort_Rates <- rename(Four_Year_Cohort_Rates, c(school_id = "School \nID",
+                                                           group_code = "Student \nGroup Code",
+                                                           group = "Student \nGroup",
+                                                           grad_rate_four_year = "2018-19 \nFour-year Cohort \nGraduation Rate", 
+                                                           comp_rate_four_year = "2018-19 \nFour-year Cohort \nCompleter Rate"))
+```
+
+```{r}
+Dropout <- rename(Dropout, c(county =  "County", 
+                             school_id = "Resident \nSchool ID", 
+                             group= "Student Group", 
+                             dropout_rate = "Dropout \nRate"))
+```
+
+
+##Drop Scores Columns
+```{r}
+Scores <- subset(Scores, select = -c(num_level_4, perc_level_4, num_level_3, perc_level_3, num_level_2, perc_level_2, num_level_1, perc_level_1))
+```
+
+##Relevel Scores
+```{r}
+unique(Scores$proficiency)
+```
+
+```{r}
+Scores <- Scores %>% 
+  mutate(proficiency = na_if(proficiency, "*")) %>% 
+  mutate(proficiency = na_if(proficiency, "--")) %>% 
+  mutate(proficiency = fct_recode(proficiency, "2.5" = "< 5.0%"))%>% 
+  mutate(proficiency = fct_recode(proficiency, "97.5" = "> 95.0%")) 
+
+Scores$proficiency <- as.character(Scores$proficiency)
+prof <- chartodec(Scores$proficiency, 0)
+Scores$proficiency_num <- prof
+```
+
+```{r}
+Scores <- within(Scores, {   
+  proficiency[proficiency_num < 5] <- "< 5%"
+  proficiency[proficiency_num >= 5 & proficiency_num < 25] <- "5-25%"
+  proficiency[proficiency_num >= 25 & proficiency_num < 50] <- "25-50%"
+  proficiency[proficiency_num >= 50 & proficiency_num < 75] <- "50-75%"
+  proficiency[proficiency_num >= 75 & proficiency_num < 101] <- "75-100%"
+  })
+```
+
+
+##Add Columns to Scores (without matching Student Group)
+```{r}
+Scores$mobility_percent <- Mobility$mobility_percent[match(Scores$school_id, Mobility$school_id)]
+
+Scores$school_type <- Mobility$school_type[match(Scores$school_id, Mobility$school_id)] 
+```
+
+```{r}
+Scores$teacher_experience_avg <- StaffFTE$teacher_experience_avg[match(Scores$school_id, StaffFTE$school_id)] 
+
+Scores$teacher_grad_fte <- StaffFTE$teacher_grad_fte[match(Scores$school_id, StaffFTE$school_id)]
+```
+
+```{r}
+Scores$low_grade <- TeacherQualification$low_grade[match(Scores$school_id, TeacherQualification$school_id)] 
+
+Scores$high_grade <- TeacherQualification$high_grade[match(Scores$school_id, TeacherQualification$school_id)] 
+
+Scores$total_teacher_fte <- TeacherQualification$total_teacher_FTE[match(Scores$school_id, TeacherQualification$school_id)] 
+
+Scores$poverty_rating <- TeacherQualification$poverty_rating[match(Scores$school_id, TeacherQualification$school_id)]
+```
+
+##Check Intersections 
+```{r}
+groups_four_cohort <- unique(Four_Year_Cohort_Rates$group)
+groups_score <- unique(Scores$group)
+groups_postsec <- unique(Post_Secondary_Enrollment$group)
+groups_attendance <- unique(Attendance$group)
+groups_dropout <- unique(Dropout$group)
+intersect(groups_attendance,groups_score)
+```
+
+#Make Dataset for Subgroup "Female" 
+```{r}
+Female_Scores <- subset(Scores, group == "Female")
+```
+
+##Adding subgroup columns to group "Female"
+```{r}
+Female_Four_Cohort <- Four_Year_Cohort_Rates %>% 
+  filter(group == "Female")
+
+Female_Five_Cohort <- Five_Year_Cohort_Rates %>% 
+  filter(group == "Female")
+
+Female_PostSec <- Post_Secondary_Enrollment %>% 
+  filter(group == "Female")
+
+Female_Attendace <- Attendance %>% 
+  filter(group == "Female")
+
+Female_Dropout <- Dropout %>% 
+  filter(group == "Female")
+```
+
+```{r}
+Female_Scores$grad_rate_four_year <- Female_Four_Cohort$grad_rate_four_year[match(Female_Scores$school_id, Female_Four_Cohort$school_id)]
+
+Female_Scores$comp_rate_four_year <- Female_Four_Cohort$comp_rate_four_year[match(Female_Scores$school_id, Female_Four_Cohort$school_id)]
+
+Female_Scores$grad_rate_five_year <- Female_Five_Cohort$grad_rate_five_year[match(Female_Scores$school_id, Female_Five_Cohort$school_id)]
+```
+
+```{r}
+Female_Scores$college_going <- Female_PostSec$college_going[match(Female_Scores$school_id, Female_PostSec$school_id)]
+```
+
+```{r}
+Female_Scores$reg_attenders <- Female_Attendace$reg_attenders[match(Female_Scores$school_id, Female_PostSec$school_id)]
+```
+
+```{r}
+Female_Scores$dropout_rate <- Female_Dropout$dropout_rate[match(Female_Scores$school_id, 
+                                                              Female_Dropout$school_id)]
+
+Female_Scores$county <- Female_Dropout$county[match(Female_Scores$school_id, 
+                                                  Female_Dropout$school_id)]
+```
+
+##Cleaning Columns for Female_Scores 
+```{r}
+Female_Scores["poverty_rating"][is.na(Female_Scores["poverty_rating"])] <- "Middle Poverty"
+```
+
+```{r}
+Female_Scores <- Female_Scores %>% 
+  mutate(dropout_rate = na_if(dropout_rate, "*"))
+
+Female_Scores$dropout_rate <- chartodec(Female_Scores$dropout_rate, 0)
+```
+
+###reg_attenders
+```{r}
+Female_Scores <- Female_Scores %>% 
+  mutate(reg_attenders = na_if(reg_attenders, "*")) %>% 
+  mutate(reg_attenders = na_if(reg_attenders, "--")) %>% 
+  mutate(reg_attenders = fct_recode(reg_attenders, "2.5" = "<5"))%>% 
+  mutate(reg_attenders = fct_recode(reg_attenders, "97.5" = ">95")) 
+
+Female_Scores$reg_attenders <- as.character(Female_Scores$reg_attenders)
+temp <- chartodec(Female_Scores$reg_attenders, 0)
+Female_Scores$reg_attenders <- temp
+```
+
+###college_going
+```{r}
+Female_Scores <- Female_Scores %>% 
+  mutate(college_going = na_if(college_going, "*")) %>% 
+  mutate(college_going = fct_recode(college_going, "2.5" = "<5"))
+
+Female_Scores$college_going <- as.character(Female_Scores$college_going)
+temp <- chartodec(Female_Scores$college_going, 0)
+Female_Scores$college_going <- temp
+```
+
+###Grad/Comp Rates 
+```{r}
+Female_Scores <- Female_Scores %>% 
+  mutate(grad_rate_four_year = na_if(grad_rate_four_year, "*")) %>% 
+  mutate(grad_rate_four_year = na_if(grad_rate_four_year, "--")) %>% 
+  mutate(grad_rate_four_year = fct_recode(grad_rate_four_year, "2.5" = "<5%"))%>% 
+  mutate(grad_rate_four_year = fct_recode(grad_rate_four_year, "97.5" = ">95%")) 
+
+Female_Scores$grad_rate_four_year <- as.character(Female_Scores$grad_rate_four_year)
+temp <- chartodec(Female_Scores$grad_rate_four_year, 0)
+Female_Scores$grad_rate_four_year <- temp
+```
+
+```{r}
+Female_Scores <- Female_Scores %>% 
+  mutate(comp_rate_four_year = na_if(comp_rate_four_year, "*")) %>% 
+  mutate(comp_rate_four_year = na_if(comp_rate_four_year, "--")) %>% 
+  mutate(comp_rate_four_year = fct_recode(comp_rate_four_year, "97.5" = ">95%")) 
+
+Female_Scores$comp_rate_four_year <- as.character(Female_Scores$comp_rate_four_year)
+temp <- chartodec(Female_Scores$comp_rate_four_year, 0)
+Female_Scores$comp_rate_four_year <- temp
+```
+
+```{r}
+Female_Scores <- Female_Scores %>% 
+  mutate(grad_rate_five_year = na_if(grad_rate_five_year, "*")) %>% 
+  mutate(grad_rate_five_year = na_if(grad_rate_five_year, "--")) %>% 
+  mutate(grad_rate_five_year = fct_recode(grad_rate_five_year, "2.5" = "<5%"))%>% 
+  mutate(grad_rate_five_year = fct_recode(grad_rate_five_year, "97.5" = ">95%")) 
+
+Female_Scores$grad_rate_five_year <- as.character(Female_Scores$grad_rate_five_year)
+temp <- chartodec(Female_Scores$grad_rate_five_year, 0)
+Female_Scores$grad_rate_five_year <- temp
+```
+
+###total_teacher_FTE
+```{r}
+Female_Scores <- Female_Scores %>% 
+  mutate(total_teacher_fte = na_if(total_teacher_fte, "--")) 
+
+Female_Scores$total_teacher_fte <- as.character(Female_Scores$total_teacher_fte)
+temp <- chartodec(Female_Scores$total_teacher_fte, 0)
+Female_Scores$total_teacher_fte <- temp
+```
+
+###rate_participation
+```{r}
+Female_Scores <- Female_Scores %>% 
+  mutate(rate_participation = na_if(rate_participation, "*")) %>% 
+  mutate(rate_participation = na_if(rate_participation, "--")) %>% 
+  mutate(rate_participation = na_if(rate_participation, "-"))
+
+Female_Scores$rate_participation <- as.character(Female_Scores$rate_participation)
+temp <- chartodec(Female_Scores$rate_participation, 0)
+Female_Scores$rate_participation <- temp
+```
+
+#Make subject split for "Female" 
+```{r}
+GroupFemale_ELA <- Female_Scores %>% 
+  filter(subject == "English Language Arts")
+
+GroupFemale_Math <- Female_Scores %>% 
+  filter(subject == "Mathematics")
+```
+
+```{r}
+DistID <- unique(GroupFemale_ELA$dist_id)
+
+amity_dist <- GroupFemale_ELA %>%
+  filter(dist_id == 2252)
+```
+
+```{r}
+amity_avg_hp <- amity_dist %>%
+```
+
+```{r}
+write.csv(GroupFemale_ELA,"~/Desktop/Thesis/GroupFemale_ELA.csv", row.names = FALSE)
+write.csv(GroupFemale_Math,"~/Desktop/Thesis/GroupFemale_Math.csv", row.names = FALSE)
+```
+
+```{r}
+level_order <- c('< 10%', '10-20%', '20-30%', '30-40%','40-50%','50-60%','60-70%','70-80%','80-90%','90-100%') 
+```
+
+#Exploratory plots
+
+##ELA
+```{r}
+plot_prof_ethnicity_ELA <- Ethnicity_All_ELA %>% 
+  drop_na(group, proficiency) %>% 
+  ggplot(aes(x = factor(proficiency, level = level_order))) + geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+ facet_wrap(group~.) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + labs(title = "Faceted Proficiency Distribution for All Groups (ELA)", x = "Percent Proficient", y = "Proportion")
+plot_prof_ethnicity_ELA
+ggsave("~/Desktop/plot_prof_ethnicity_ELA.jpg")
+```
+
+```{r}
+plot_prof_gender_ELA <- Gender_ELA %>% 
+  drop_na(group, proficiency) %>% 
+  ggplot(aes(x = factor(proficiency, level = level_order))) + geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+ facet_wrap(group~.) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + labs(title = "Faceted Proficiency Distribution for Genders (ELA)", x = "Percent Proficient", y = "Proportion")
+plot_prof_gender_ELA
+ggsave("~/Desktop/plot_prof_gender_ELA.jpg")
+```
+
+
+##Ethnicity Math
+```{r}
+plot_prof_ethnicity_Math <-  Ethnicity_All_Math %>% 
+  drop_na(group, proficiency) %>% 
+  ggplot(aes(x = factor(proficiency, level = level_order))) + geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+ facet_wrap(group~.) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + labs(title = "Faceted Proficiency Distribution for All Groups (Math)", x = "Percent Proficient", y = "Proportion")
+plot_prof_ethnicity_Math
+ggsave("~/Desktop/plot_prof_ethnicity_Math.jpg")
+```
+
+```{r}
+plot_prof_gender_Math <-  Gender_Math %>% 
+  drop_na(group, proficiency) %>% 
+  ggplot(aes(x = factor(proficiency, level = level_order))) + geom_bar(aes(y = (..count..)/tapply(..count..,..PANEL..,sum)[..PANEL..]))+ facet_wrap(group~.) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + labs(title = "Faceted Proficiency Distribution for Genders (Math)", x = "Percent Proficient", y = "Proportion")
+plot_prof_gender_Math
+ggsave("~/Desktop/plot_prof_gender_Math.jpg")
+```
+#Summary Statistics ELA
+
+##ethnicity
+```{r}
+summary_dat_ethnicity_ELA <- Ethnicity_All_ELA %>% 
+  subset(select = c(school, group, num_participants, proficiency,teacher_experience_avg, teacher_grad_fte, total_teacher_fte, rate_participation, poverty_rating)) %>% 
+  mutate(num_participants = as.numeric(num_participants))
+
+summary_dat_gender_ELA <- Gender_ELA %>% 
+  subset(select = c(school, group, num_participants, proficiency,teacher_experience_avg, teacher_grad_fte, total_teacher_fte, rate_participation, poverty_rating)) %>% 
+  mutate(num_participants = as.numeric(num_participants))
+```
+
+```{r}
+rp_summary_ethnictiy_ELA <- summary_dat_ethnicity_ELA %>% 
+  group_by(group) %>% 
+  drop_na(rate_participation) %>% 
+  summarize(avg_rp = mean(rate_participation))
+
+count_by_ethnicity_ELA <- aggregate(summary_dat_ethnicity_ELA[, c("num_participants")], 
+                                    by = list(summary_dat_ethnicity_ELA$group), sum)
+
+avg_num_participants_eth_ela <- count_by_ethnicity_ELA 
+avg_num_participants_eth_ela$x <- (avg_num_participants_eth_ela$x)/1236
+
+summary(summary_dat_ethnicity_ELA)
+```
+
+##gender
+```{r}
+rp_summary_gender_ela <- summary_dat_gender_ELA %>% 
+  group_by(group) %>% 
+  drop_na(rate_participation) %>% 
+  summarize(avg_rp = mean(rate_participation))
+
+count_by_gender_ELA <- aggregate(summary_dat_gender_ELA[, c("num_participants")], 
+                                   by = list(summary_dat_gender_ELA$group), sum)
+
+avg_num_participants_gen_ela <- count_by_gender_ELA 
+avg_num_participants_gen_ela$x <- (avg_num_participants_gen_ela$x)/1236
+
+summary(summary_dat_gender_ELA)
+```
+
+#Summary Statistics Math
+
+##ethnicity
+```{r}
+summary_dat_ethnicity_math <- Ethnicity_All_Math %>% 
+  subset(select = c(school, group, num_participants, proficiency,teacher_experience_avg, teacher_grad_fte, total_teacher_fte, rate_participation, poverty_rating)) %>% 
+  mutate(num_participants = as.numeric(num_participants))
+
+summary_dat_gender_math <- Gender_Math %>% 
+  subset(select = c(school, group, num_participants, proficiency,teacher_experience_avg, teacher_grad_fte, total_teacher_fte, rate_participation, poverty_rating)) %>% 
+  mutate(num_participants = as.numeric(num_participants))
+```
+
+```{r}
+rp_summary_ethnictiy_math <- summary_dat_ethnicity_math %>% 
+  group_by(group) %>% 
+  drop_na(rate_participation) %>% 
+  summarize(avg_rp = mean(rate_participation))
+latex_rp_summary_ethnictiy_math <- xtable(rp_summary_ethnictiy_math) 
+
+count_by_ethnicity_math <- aggregate(summary_dat_ethnicity_math[, c("num_participants")], 
+                                    by = list(summary_dat_ethnicity_math$group), sum)
+
+
+avg_num_participants_eth_math <- count_by_ethnicity_math
+avg_num_participants_eth_math$x <- (avg_num_participants_eth_math$x)/1236
+
+latex_avg_num_participants_eth_math <- xtable(avg_num_participants_eth_math)
+```
+
+##gender
+```{r}
+rp_summary_gender_math <- summary_dat_gender_math %>% 
+  group_by(group) %>% 
+  drop_na(rate_participation) %>% 
+  summarize(avg_rp = mean(rate_participation))
+
+count_by_gender_math <- aggregate(summary_dat_gender_math[, c("num_participants")], 
+                                   by = list(summary_dat_gender_math$group), sum)
+
+avg_num_participants_gen_math <- count_by_gender_math
+avg_num_participants_gen_math$x <- (avg_num_participants_gen_math$x)/1236
+
+latex_avg_num_participants_gen_math <- xtable(avg_num_participants_gen_math)
+  
+summary_dat <- summary_dat_gender_math %>% 
+  filter(group == "Male") %>% 
+  subset(select = c(teacher_experience_avg, teacher_grad_fte, total_teacher_fte, poverty_rating)) 
+summ_latex <- xtable(summary(summary_dat))
+```
+
+```{r}
+Group_White_ELA %>% 
+  select("teacher_experience_avg", "teacher_grad_fte", "total_teacher_fte") %>% 
+  ggcorr()
+
+Group_White_ELA %>% 
+  group_by(school_type) %>% 
+  summarize(corr = cor(teacher_grad_fte, total_teacher_fte, use = "complete.obs"))
+```
+
+```{r}
+White_POC_ELA %>% 
+  select("dropout_rate", "college_going", "reg_attenders","mobility_percent", "comp_rate_four_year","rate_participation") %>% 
+  ggcorr()
+```
+
+
+```{r}
+Group_Asian_ELA %>% 
+  select("poverty_rating", "proficiency", "teacher_experience_avg", "teacher_grad_fte", "total_teacher_fte", "reg_attenders", "mobility_percent") %>% 
+  summary()
+```
+```{r}
+Group_Asian_ELA %>% 
+  ggplot(aes(teacher_experience_avg, total_teacher_fte)) + geom_smooth()
+```
+```{r}
+Group_Asian_ELA %>% 
+  ggplot(aes(teacher_grad_fte, total_teacher_fte)) + geom_point() + facet_wrap(~school_type)
+```
+
+```{r}
+Group_Ethnicity_ELA %>% 
+  ggplot(aes(group, comp_rate_four_year)) + geom_boxplot()
+```
+
